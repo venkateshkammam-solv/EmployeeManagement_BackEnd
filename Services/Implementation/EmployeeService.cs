@@ -18,10 +18,20 @@ namespace AzureFunctionPet.Services
             _queueRepo = queueRepo;
         }
 
-        public async Task<AddEmployeeRequest> HandleIncomingEmployeeEventAsync(AddEmployeeRequest addEmployeeRequest )
+        public async Task<AddEmployeeRequest> HandleIncomingEmployeeEventAsync(AddEmployeeRequest addEmployeeRequest)
         {
-            var created = await _cosmosRepo.AddAsync(addEmployeeRequest );
-            await _queueRepo.EnqueueAsync(JsonSerializer.Serialize(new { id= created.id, eventType = created.Email }));
+            var created = await _cosmosRepo.AddAsync(addEmployeeRequest);
+
+            var queuePayload = new
+            {
+                EmpId = created.id,
+                FullName = created.FullName,
+                Email = created.Email,
+                Department = created.Department,
+                DateOfJoining = created.DateOfJoining
+            };
+            await _queueRepo.EnqueueAsync(JsonSerializer.Serialize(queuePayload));
+
             return created;
         }
 
