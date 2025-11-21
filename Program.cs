@@ -45,7 +45,7 @@ var host = new HostBuilder()
         // App Services
         services.AddSingleton<DataLog>();
         services.AddSingleton<IEmployeeService, EmployeeService>();
-        services.AddSingleton<idGenerator>();
+        services.AddSingleton<IdGenerator >();
         services.AddSingleton<EmailService>();
     })
     .Build();
