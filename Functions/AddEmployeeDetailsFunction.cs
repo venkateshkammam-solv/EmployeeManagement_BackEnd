@@ -13,12 +13,12 @@ namespace AzureFunctionPet.Functions
     {
         private readonly IEmployeeService _service;
         private readonly DataLog _dataLog;
-        private readonly idGenerator _codeGenerator;
+        private readonly IdGenerator  _codeGenerator;
 
         public EmployeeRequest(
             IEmployeeService service,
             DataLog dataLog,
-            idGenerator codeGenerator)
+            IdGenerator  codeGenerator)
         {
             _service = service;
             _dataLog = dataLog;
@@ -54,7 +54,7 @@ namespace AzureFunctionPet.Functions
                 await bad.WriteStringAsync($"Date of Birth does not match Age {addEmployeeRequest .Age}.");
                 return bad;
             }
-            addEmployeeRequest .id = await _codeGenerator.GenerateidAsync();
+            addEmployeeRequest.id = await _codeGenerator.GenerateidAsync();
             var created = await _service.HandleIncomingEmployeeEventAsync(addEmployeeRequest );
 
             var resp = req.CreateResponse(System.Net.HttpStatusCode.Created);

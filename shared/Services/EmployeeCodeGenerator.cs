@@ -3,11 +3,11 @@ using AzureFunctionPet.Repositories;
 
 namespace Shared.Services
 {
-    public class idGenerator
+    public class IdGenerator 
     {
         private readonly ICosmosRepository _cosmosRepository;
 
-        public idGenerator(ICosmosRepository cosmosRepository)
+        public IdGenerator (ICosmosRepository cosmosRepository)
         {
             _cosmosRepository = cosmosRepository;
         }
