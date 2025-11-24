@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using AzureFunctionPet.Models;
-using Shared.Services;
 using AzureFunctions_Triggers.Models;
 using AzureFunctionPet.Constants;
 
@@ -12,62 +11,60 @@ namespace AzureFunctionPet.Functions
 {
     public class QueueProcessorFunction
     {
-        private readonly DataLog _dataLog;
         private readonly EmailService _emailService;
+        private readonly ILogger<QueueProcessorFunction> _logger;
 
-        public QueueProcessorFunction(DataLog dataLog, EmailService emailService)
+        public QueueProcessorFunction(EmailService emailService, ILogger<QueueProcessorFunction> logger)
         {
-            _dataLog = dataLog;
             _emailService = emailService;
+            _logger = logger;
         }
 
         [Function("QueueProcessor")]
-        public async Task Run([QueueTrigger("employee-events", Connection = "AzureWebJobsStorage")] string queueMessage, FunctionContext context)
+        public async Task Run(
+            [QueueTrigger("employee-events", Connection = "AzureWebJobsStorage")] string queueMessage,
+            FunctionContext context)
         {
-            var logger = context.GetLogger<QueueProcessorFunction>();
             string employeeName = "Unknown";
 
             try
             {
-                await _dataLog.LogInfoAsync($"Queue message received: {queueMessage}");
-                logger.LogInformation("Queue message received.");
+                _logger.LogInformation("Queue message received.");
 
-                // Deserialize the message
+                // Deserializing queue payload
                 var employeeData = JsonSerializer.Deserialize<EmployeeDetailsDto>(
                     queueMessage,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-                );
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
                 if (employeeData == null)
                 {
-                    var errorMsg = "Queue message could not be deserialized to EmployeeDetailsDto.";
-                    logger.LogError(errorMsg);
-                    await _dataLog.LogErrorAsync(errorMsg);
+                    _logger.LogWarning("Queue message could not be deserialized to EmployeeDetailsDto.");
                     return;
                 }
 
                 employeeName = employeeData.FullName;
-                await _dataLog.LogInfoAsync($"Processing onboarding for employee: {employeeName}");
-                logger.LogInformation("Processing employee onboarding {@EmployeeData}", employeeData);
+
+                _logger.LogInformation("Processing onboarding workflow.");
+
+                //onboarding email
                 var subject = $"Welcome to the Company, {employeeName}!";
                 var body = EmailTemplates.EmployeeOnboarding
                     .Replace("{{EmployeeName}}", employeeName)
                     .Replace("{{EmployeeCode}}", employeeData.id)
                     .Replace("{{Department}}", employeeData.Department)
                     .Replace("{{DateOfJoining}}", employeeData.DateOfJoining.ToString("yyyy-MM-dd"));
+
                 await _emailService.SendEmailAsync(employeeData.Email, subject, body);
-                await _dataLog.LogInfoAsync($"Onboarding email sent to {employeeName} ({employeeData.Email})");
-                logger.LogInformation("Onboarding email successfully sent to employee {EmployeeName}", employeeName);
+
+                _logger.LogInformation("Onboarding email sent successfully.");
             }
             catch (JsonException jsonEx)
             {
-                logger.LogError(jsonEx, "Failed to deserialize queue message for employee: {EmployeeName}", employeeName);
-                await _dataLog.LogErrorAsync($"JSON deserialization failed for employee: {employeeName}", jsonEx);
+                _logger.LogError(jsonEx, "Failed to deserialize queue message.");
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to process onboarding queue message for employee: {EmployeeName}", employeeName);
-                await _dataLog.LogErrorAsync($"Error processing onboarding queue message for employee: {employeeName}", ex);
+                _logger.LogError(ex, "An unexpected error occurred while processing the queue message.");
             }
         }
     }

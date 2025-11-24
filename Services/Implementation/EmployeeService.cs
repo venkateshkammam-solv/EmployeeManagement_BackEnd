@@ -24,7 +24,7 @@ namespace AzureFunctionPet.Services
 
             var queuePayload = new
             {
-                EmpId = created.id,
+                id = created.id,
                 FullName = created.FullName,
                 Email = created.Email,
                 Department = created.Department,
