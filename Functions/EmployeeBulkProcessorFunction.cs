@@ -15,14 +15,14 @@ namespace AzureFunctionPet.Functions
     {
         private readonly ILogger<EmployeeDocumentProcessorFunction> _logger;
         private readonly EmailService _emailService;
-        private readonly ICosmosRepository _cosmosRepo;
+        private readonly IEmployeeRepository _cosmosRepo;
         private readonly IdGenerator _codeGenerator;
 
         public EmployeeDocumentProcessorFunction(
             ILogger<EmployeeDocumentProcessorFunction> logger,
             EmailService emailService,
             IdGenerator codeGenerator,
-            ICosmosRepository cosmosRepo)
+            IEmployeeRepository cosmosRepo)
         {
             _logger = logger;
             _emailService = emailService;
@@ -35,7 +35,7 @@ namespace AzureFunctionPet.Functions
             [BlobTrigger("uploads/{name}", Connection = "AzureWebJobsStorage")] Stream blobStream,
             string name)
         {
-            _logger.LogInformation("EmployeeDocumentProcessor triggered for file: {FileName}", name);
+            _logger.LogInformation("EmployeeDocumentProcessor triggered for file");
 
             try
             {
@@ -49,7 +49,7 @@ namespace AzureFunctionPet.Functions
                 for (int i = 1; i < table.Rows.Count; i++)
                 {
                     var row = table.Rows[i];
-                    string empCode = await _codeGenerator.GenerateidAsync();
+                    string empCode = await _codeGenerator.GenerateidAsync("");
 
                     var employee = new AddEmployeeRequest
                     {

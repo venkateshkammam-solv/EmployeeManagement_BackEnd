@@ -5,10 +5,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AzureFunctionPet.Repositories.Constants;
+using AzureFunctions.Models;
 
 namespace AzureFunctionPet.Repositories
 {
-	public class CosmosRepository : ICosmosRepository
+	public class EmployeeRepository : IEmployeeRepository
 	{
 		private readonly CosmosClient _client;
 		private readonly string _databaseId;
@@ -17,7 +18,7 @@ namespace AzureFunctionPet.Repositories
 		private Database _db;
 		private Container _container;
 
-		public CosmosRepository(CosmosClient client, string databaseId, string containerId)
+		public EmployeeRepository(CosmosClient client, string databaseId, string containerId)
 		{
 			_client = client;
 			_databaseId = databaseId;
@@ -47,8 +48,58 @@ namespace AzureFunctionPet.Repositories
 			var response = await _container.CreateItemAsync(addEmployeeRequest, new PartitionKey(addEmployeeRequest.id));
 			return response.Resource;
 		}
+    
+        public async Task<bool> IsEmailExistsAsync(string email)
+        {
+            await InitializeDatabaseAsync();
 
-		public async Task<IEnumerable<EmployeeDetailsDto>> GetAllEmployeesAsync()
+            var query = new QueryDefinition(
+                "SELECT VALUE COUNT(1) FROM c WHERE c.Email = @Email")
+                .WithParameter("@Email", email);
+
+            var iterator = _container.GetItemQueryIterator<int>(query);
+
+            int count = 0;
+            while (iterator.HasMoreResults)
+            {
+                foreach (var result in await iterator.ReadNextAsync())
+                {
+                    count += result;
+                }
+            }
+
+            return count > 0;
+        }
+
+        public async Task<bool> IsPhoneNumberExistsAsync(string phoneNumber)
+        {
+            await InitializeDatabaseAsync();
+            var query = new QueryDefinition(
+                "SELECT VALUE COUNT(1) FROM c WHERE c.PhoneNumber = @PhoneNumber")
+                .WithParameter("@PhoneNumber", phoneNumber);
+
+            var iterator = _container.GetItemQueryIterator<int>(query);
+
+            int count = 0;
+            while (iterator.HasMoreResults)
+            {
+                foreach (var result in await iterator.ReadNextAsync())
+                {
+                    count += result;
+                }
+            }
+
+            return count > 0;
+        }
+
+        public async Task<DocumentMetadata> AddDocumentDataAsync(DocumentMetadata documnetMetaData)
+        {
+            await InitializeDatabaseAsync();
+            var response = await _container.CreateItemAsync(documnetMetaData, new PartitionKey(documnetMetaData.id));
+            return response.Resource;
+        }
+
+        public async Task<IEnumerable<EmployeeDetailsDto>> GetAllEmployeesAsync()
 		{
 			await InitializeDatabaseAsync();
 			var iterator = _container.GetItemQueryIterator<EmployeeDetailsDto>(new QueryDefinition(CosmosQueries.GetAllEmployees));
