@@ -65,7 +65,7 @@ namespace AzureFunctionPet.Services
             {
                 throw new ArgumentNullException(nameof(metadata));
             }
-            metadata.id = await _codeGenerator.GenerateidAsync("");
+            metadata.id = await _codeGenerator.GenerateidAsync("doc");
             await _cosmosRepo.AddDocumentDataAsync(metadata);
 
             return "Document created";
