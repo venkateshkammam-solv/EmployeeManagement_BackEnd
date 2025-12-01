@@ -1,29 +1,30 @@
-
 using Microsoft.Azure.Functions.Worker;
 using AzureFunctionPet.Repositories;
-
-using Shared.Services;
 using AzureFunctionPet.Constants;
+using Microsoft.Extensions.Logging;
 
 namespace AzureFunctionPet.Functions
 {
-    public class TimerSummaryFunction
+    public class EmployeeOcassion
     {
-        private readonly DataLog _dataLog;
         private readonly EmailService _emailService;
         private readonly IEmployeeRepository _repository;
+        private readonly ILogger<EmployeeOcassion> _logger;
 
-        public TimerSummaryFunction(IEmployeeRepository repository, DataLog dataLog, EmailService emailService)
+        public EmployeeOcassion(
+            IEmployeeRepository repository,
+            ILogger<EmployeeOcassion> logger,
+            EmailService emailService)
         {
             _repository = repository;
-            _dataLog = dataLog;
+            _logger = logger;
             _emailService = emailService;
         }
 
-        [Function("TimerSummaryFunction")]
+        [Function("EmployeeOcassion")]
         public async Task Run([TimerTrigger("0 56 10 * * *")] TimerInfo timerInfo)
         {
-            await _dataLog.LogInfoAsync($"Birthday check started at: {DateTime.UtcNow}");
+            _logger.LogInformation($"Birthday check started at: {DateTime.UtcNow}");
 
             try
             {
@@ -31,16 +32,15 @@ namespace AzureFunctionPet.Functions
                 var today = DateTime.UtcNow.Date;
 
                 var birthdayEmployees = employees?
-                    .Where(e =>
-                        e.DateOfBirth.Day == today.Day &&
-                        e.DateOfBirth.Month == today.Month
-                    ).ToList();
+                    .Where(e => e.DateOfBirth.Day == today.Day &&
+                                e.DateOfBirth.Month == today.Month)
+                    .ToList();
 
-                await _dataLog.LogInfoAsync($"Birthday employees found: {birthdayEmployees?.Count ?? 0}");
+                _logger.LogInformation($"Birthday employees found: {birthdayEmployees?.Count ?? 0}");
 
                 if (birthdayEmployees == null || birthdayEmployees.Count == 0)
                 {
-                    await _dataLog.LogInfoAsync("No birthdays today.");
+                    _logger.LogInformation("No birthdays today.");
                     return;
                 }
 
@@ -54,14 +54,14 @@ namespace AzureFunctionPet.Functions
                         emailBody
                     );
 
-                    await _dataLog.LogInfoAsync($"Birthday email sent to {emp.FullName} ({emp.Email})");
+                    _logger.LogInformation($"Birthday email sent to: {emp.Email}");
                 }
 
-                await _dataLog.LogInfoAsync("All birthday emails sent successfully.");
+                _logger.LogInformation("All birthday emails sent successfully.");
             }
             catch (Exception ex)
             {
-                await _dataLog.LogErrorAsync("Error occurred during birthday email process", ex);
+                _logger.LogError(ex, "Error occurred during birthday email process");
             }
         }
     }
