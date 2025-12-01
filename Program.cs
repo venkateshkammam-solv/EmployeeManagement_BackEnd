@@ -43,7 +43,6 @@ var host = new HostBuilder()
         services.AddSingleton<IQueueRepository>(new QueueRepository(queueClient));
 
         // App Services
-        services.AddSingleton<DataLog>();
         services.AddSingleton<IEmployeeService, EmployeeService>();
         services.AddSingleton<IdGenerator >();
         services.AddSingleton<EmailService>();

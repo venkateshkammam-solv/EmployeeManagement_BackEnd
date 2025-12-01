@@ -42,7 +42,7 @@ public class UploadDocumentHttpStart
             }
 
             // Extract boundary
-            var boundaryIndex = contentType.IndexOf("boundary=", System.StringComparison.OrdinalIgnoreCase);
+            var boundaryIndex = contentType.IndexOf("boundary=", StringComparison.OrdinalIgnoreCase);
             if (boundaryIndex < 0)
             {
                 response.StatusCode = HttpStatusCode.BadRequest;
@@ -52,7 +52,7 @@ public class UploadDocumentHttpStart
 
             var boundary = "--" + contentType.Substring(boundaryIndex + "boundary=".Length).Trim('"');
 
-            // Prepare temp storage and variables
+            // temp storage path
             string tempPath = Path.GetTempPath();
             string? fileName = null;
             string tempFilePath = "";
@@ -78,7 +78,7 @@ public class UploadDocumentHttpStart
                     continue;
                 }
 
-                if (line.StartsWith("Content-Disposition:", System.StringComparison.OrdinalIgnoreCase))
+                if (line.StartsWith("Content-Disposition:", StringComparison.OrdinalIgnoreCase))
                 {
                     var fileMatch = Regex.Match(line, "filename=\"(?<filename>.+?)\"");
                     var nameMatch = Regex.Match(line, "name=\"(?<name>.+?)\"");

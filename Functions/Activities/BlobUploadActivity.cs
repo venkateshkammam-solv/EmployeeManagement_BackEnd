@@ -37,7 +37,7 @@ public class BlobUploadActivity
 
     private static string SanitizeFileName(string fileName)
     {
-        foreach (var c in System.IO.Path.GetInvalidFileNameChars())
+        foreach (var c in Path.GetInvalidFileNameChars())
         {
             fileName = fileName.Replace(c, '_');
         }
