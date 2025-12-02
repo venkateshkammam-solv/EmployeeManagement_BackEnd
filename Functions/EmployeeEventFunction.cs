@@ -2,9 +2,7 @@
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using System.Net;
-using System.Threading.Tasks;
 using AzureFunctionPet.Services;
-using AzureFunctionPet.Models;
 using Newtonsoft.Json;
 using AzureFunctions_Triggers.Models;
 
@@ -88,7 +86,6 @@ namespace AzureFunctionPet.Functions
             [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "DeleteEmployeeDataById/{id}")] HttpRequestData req,
             string id)
         {
-            _logger.LogInformation("Deleting employee record...");
             await _service.DeleteEmployeeAsync(id);
             _logger.LogInformation("Employee record deleted successfully.");
 

@@ -21,17 +21,13 @@ public class BlobUploadActivity
     {
         var container = _blobClient.GetBlobContainerClient(_containerName);
         await container.CreateIfNotExistsAsync();
-
         var sanitized = SanitizeFileName(metadata.FileName);
         var blobName = $"{DateTime.UtcNow:yyyyMMddHHmmss}_{Guid.NewGuid():N}_{sanitized}";
         var blob = container.GetBlobClient(blobName);
-
         using var fileStream = File.OpenRead(metadata.TempFilePath);
         await blob.UploadAsync(fileStream, overwrite: false);
-
         metadata.UploadedBlobUrl = blob.Uri.ToString();
         _logger.LogInformation("Uploaded blob: {Blob}", blobName);
-
         return metadata;
     }
 

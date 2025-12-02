@@ -1,13 +1,11 @@
-﻿using Azure.Storage.Blobs;
-using Microsoft.Azure.Functions.Worker;
+﻿using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using AzureFunctionPet.Models;
 using AzureFunctionPet.Repositories;
 using AzureFunctions_Triggers.Models;
 using Shared.Services;
 using ExcelDataReader;
-using System.Data;
 using AzureFunctionPet.Constants;
+using System.Text;
 
 namespace AzureFunctionPet.Functions
 {
@@ -31,15 +29,13 @@ namespace AzureFunctionPet.Functions
         }
 
         [Function("EmployeeDocumentProcessor")]
-        public async Task RunAsync(
-            [BlobTrigger("uploads/{name}", Connection = "AzureWebJobsStorage")] Stream blobStream,
-            string name)
+        public async Task RunAsync([BlobTrigger("uploads/{name}", Connection = "AzureWebJobsStorage")] Stream blobStream, string name)
         {
             _logger.LogInformation("EmployeeDocumentProcessor triggered for file");
 
             try
             {
-                System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+                Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
                 using var excelReader = ExcelReaderFactory.CreateReader(blobStream);
                 var result = excelReader.AsDataSet();
                 var table = result.Tables[0];
