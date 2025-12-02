@@ -17,9 +17,7 @@ public class UploadDocumentHttpStart
     }
 
     [Function("UploadDocument_HttpStart")]
-    public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req,
-        [DurableClient] DurableTaskClient client)  
+    public async Task<HttpResponseData> Run([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req, [DurableClient] DurableTaskClient client)  
     {
         var response = req.CreateResponse();
 

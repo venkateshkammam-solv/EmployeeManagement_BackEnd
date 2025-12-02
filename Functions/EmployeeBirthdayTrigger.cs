@@ -5,15 +5,15 @@ using Microsoft.Extensions.Logging;
 
 namespace AzureFunctionPet.Functions
 {
-    public class EmployeeOcassion
+    public class EmployeeBirthdayTrigger
     {
         private readonly EmailService _emailService;
         private readonly IEmployeeRepository _repository;
-        private readonly ILogger<EmployeeOcassion> _logger;
+        private readonly ILogger<EmployeeBirthdayTrigger> _logger;
 
-        public EmployeeOcassion(
+        public EmployeeBirthdayTrigger(
             IEmployeeRepository repository,
-            ILogger<EmployeeOcassion> logger,
+            ILogger<EmployeeBirthdayTrigger> logger,
             EmailService emailService)
         {
             _repository = repository;
@@ -21,7 +21,7 @@ namespace AzureFunctionPet.Functions
             _emailService = emailService;
         }
 
-        [Function("EmployeeOcassion")]
+        [Function("EmployeeBirthdayTrigger")]
         public async Task Run([TimerTrigger("0 56 10 * * *")] TimerInfo timerInfo)
         {
             _logger.LogInformation($"Birthday check started at: {DateTime.UtcNow}");
