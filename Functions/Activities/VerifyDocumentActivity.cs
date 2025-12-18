@@ -1,5 +1,4 @@
 ﻿using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.Functions.Worker.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using AzureFunctions_Triggers.Models;
 using AzureFunctions.Models;
@@ -27,7 +26,7 @@ namespace AzureFunctions_Triggers.Functions.Activities
                 EmployeeId = document.EmployeeId,
                 EmployeeName = document.EmployeeName,
                 Email = document.Email ?? "",
-                Status = verificationPassed ? "Verified" : "Failed",
+                Status = verificationPassed ? "Pending" : "Failed",
                 Message = verificationPassed ? "Document verified successfully" : "Document verification failed",
                 BlobUrl = document.UploadedBlobUrl ?? "",
                 VerifiedDate = DateTime.UtcNow

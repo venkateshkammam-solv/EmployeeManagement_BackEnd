@@ -2,7 +2,7 @@
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AzureFunctionPet.Repositories
+namespace AzureFunctions_Triggers.Repositories
 {
     public class QueueRepository : IQueueRepository
     {

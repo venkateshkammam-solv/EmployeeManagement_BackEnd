@@ -1,7 +1,7 @@
 ﻿using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using AzureFunctions.Models;
-using AzureFunctionPet.Services;
+using AzureFunctions_Triggers.Services;
 
 public class SaveMetadataActivity
 {
@@ -17,8 +17,8 @@ public class SaveMetadataActivity
     [Function("SaveMetadataActivity")]
     public async Task Run([ActivityTrigger] DocumentMetadata metadata)
     {
-
-        await _employeeService.HandleAddDocumentAsync(metadata);
-        _logger.LogInformation("Document metadata saved successfully");
+        await _employeeService.SaveOrUpdateDocumentAsync(metadata);
+        _logger.LogInformation("Document metadata upserted. Id: {Id}, Status: {Status}", metadata.id, metadata.Status);
     }
+
 }

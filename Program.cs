@@ -5,8 +5,10 @@ using Azure.Storage.Queues;
 using Microsoft.Extensions.DependencyInjection;
 using Azure.Storage.Blobs;
 using Shared.Services;
-using AzureFunctionPet.Repositories;
-using AzureFunctionPet.Services;
+using AzureFunctions_Triggers.Repositories;
+using AzureFunctions_Triggers.Services;
+using AzureFunctions_Triggers.Services.Interfaces;
+using AzureFunctions_Triggers.Repositories.Interfaces;
 
 var host = new HostBuilder()
     .ConfigureAppConfiguration((context, config) =>
@@ -28,6 +30,13 @@ var host = new HostBuilder()
             cfg["Cosmos_Container"]
         ));
 
+        services.AddSingleton<IDocumentRepository>(
+           new DocumentRepository(
+           cosmosClient,
+           cfg["Cosmos_Database"],
+           cfg["Cosmos_Container"]
+       ));
+
         // Blob Storage connection
         services.AddSingleton<BlobServiceClient>(_ =>
             new BlobServiceClient(cfg["AzureWebJobsStorage"])
@@ -44,6 +53,7 @@ var host = new HostBuilder()
 
         // App Services
         services.AddSingleton<IEmployeeService, EmployeeService>();
+        services.AddSingleton<IDocumentService, DocumentService>();
         services.AddSingleton<IdGenerator >();
         services.AddSingleton<EmailService>();
     })
