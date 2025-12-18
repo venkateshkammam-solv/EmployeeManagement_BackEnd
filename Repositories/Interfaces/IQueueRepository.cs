@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace AzureFunctionPet.Repositories
+namespace AzureFunctions_Triggers.Repositories
 {
     public interface IQueueRepository
     {

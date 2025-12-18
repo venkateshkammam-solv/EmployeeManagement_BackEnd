@@ -1,13 +1,15 @@
 ﻿using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
-using AzureFunctionPet.Services;
+using AzureFunctions_Triggers.Services;
 using AzureFunctions_Triggers.Models;
 using Shared.Services;
-using MyAzureFunctionApp.Shared;
 using Microsoft.Extensions.Logging;
 using System.Net;
-namespace AzureFunctionPet.Functions
+using AzureFunctions_Triggers.Shared.Constants;
+using MyAzureFunctionApp.Shared;
+
+namespace AzureFunctions_Triggers.Functions
 {
     public class EmployeeRequest
     {
@@ -27,37 +29,41 @@ namespace AzureFunctionPet.Functions
 
         [Function("EmployeeEventFunction")]
         public async Task<HttpResponseData> Run(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "AddEmployeeDetails")] HttpRequestData req)
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "AddEmployeeDetails")]
+            HttpRequestData req)
         {
             try
             {
-                _logger.LogInformation("AddEmployeeDetails request received");
+                _logger.LogInformation(Messages.RequestReceived);
+
                 var body = await new StreamReader(req.Body).ReadToEndAsync();
-                var addEmployeeRequest = JsonSerializer.Deserialize<AddEmployeeRequest>(body, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+                var addEmployeeRequest = JsonSerializer.Deserialize<AddEmployeeRequest>(
+                    body,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                );
 
                 if (addEmployeeRequest == null)
                 {
-                    _logger.LogWarning("Invalid request body.");
+                    _logger.LogWarning(Messages.InvalidRequest);
                     var bad = req.CreateResponse(HttpStatusCode.BadRequest);
-                    await bad.WriteStringAsync("Invalid request body.");
+                    await bad.WriteStringAsync(Messages.InvalidRequest);
                     return bad;
                 }
                 if (!addEmployeeRequest.DateOfBirth.HasValue)
                 {
-                    _logger.LogWarning("Date of Birth is required.");
+                    _logger.LogWarning(Messages.DateOfBirthRequired);
                     var bad = req.CreateResponse(HttpStatusCode.BadRequest);
-                    await bad.WriteStringAsync("Date of Birth is required.");
+                    await bad.WriteStringAsync(Messages.DateOfBirthRequired);
                     return bad;
                 }
 
-                if (!ValidationHelper.IsDobMatchingAge(addEmployeeRequest.DateOfBirth.Value, addEmployeeRequest.Age))
+                if (!ValidationHelper.IsDobMatchingAge(
+                        addEmployeeRequest.DateOfBirth.Value,
+                        addEmployeeRequest.Age))
                 {
-                    _logger.LogWarning("DOB does not match provided Age.");
+                    _logger.LogWarning(Messages.DobAgeMismatch);
                     var bad = req.CreateResponse(HttpStatusCode.BadRequest);
-                    await bad.WriteStringAsync($"Date of Birth does not match Age {addEmployeeRequest.Age}.");
+                    await bad.WriteStringAsync(Messages.DobAgeMismatch);
                     return bad;
                 }
                 var emailExists = await _service.IsEmailExistsAsync(addEmployeeRequest.Email);
@@ -66,10 +72,10 @@ namespace AzureFunctionPet.Functions
                 var errors = new List<string>();
 
                 if (emailExists)
-                    errors.Add("Email already exists.");
+                    errors.Add(Messages.EmailAlreadyExists);
 
                 if (phoneExists)
-                    errors.Add("Phone number already exists.");
+                    errors.Add(Messages.PhoneAlreadyExists);
 
                 if (errors.Any())
                 {
@@ -79,16 +85,17 @@ namespace AzureFunctionPet.Functions
                 }
                 addEmployeeRequest.id = await _codeGenerator.GenerateidAsync(" ");
                 var created = await _service.HandleIncomingEmployeeEventAsync(addEmployeeRequest);
-                _logger.LogInformation("Employee record created successfully.");
+
+                _logger.LogInformation(Messages.EmployeeCreated);
                 var resp = req.CreateResponse(HttpStatusCode.Created);
                 await resp.WriteAsJsonAsync(created);
                 return resp;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while processing AddEmployeeDetails request.");
+                _logger.LogError(ex, Messages.ProcessingError);
                 var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-                await errorResponse.WriteStringAsync("Internal server error.");
+                await errorResponse.WriteStringAsync(Messages.InternalServerError);
                 return errorResponse;
             }
         }

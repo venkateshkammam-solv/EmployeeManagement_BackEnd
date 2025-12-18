@@ -1,9 +1,10 @@
 using Microsoft.Azure.Functions.Worker;
-using AzureFunctionPet.Repositories;
-using AzureFunctionPet.Constants;
+using AzureFunctions_Triggers.Repositories;
+using AzureFunctions_Triggers.Constants;
 using Microsoft.Extensions.Logging;
+using AzureFunctions_Triggers.Shared.Constants;
 
-namespace AzureFunctionPet.Functions
+namespace AzureFunctions_Triggers.Functions
 {
     public class EmployeeBirthdayTrigger
     {
@@ -24,7 +25,6 @@ namespace AzureFunctionPet.Functions
         [Function("EmployeeBirthdayTrigger")]
         public async Task Run([TimerTrigger("0 56 10 * * *")] TimerInfo timerInfo)
         {
-            _logger.LogInformation($"Birthday check started at: {DateTime.UtcNow}");
 
             try
             {
@@ -36,11 +36,11 @@ namespace AzureFunctionPet.Functions
                                 e.DateOfBirth.Month == today.Month)
                     .ToList();
 
-                _logger.LogInformation($"Birthday employees found: {birthdayEmployees?.Count ?? 0}");
+                _logger.LogInformation(Messages.BirthdayEmployeeFoundMsg);
 
                 if (birthdayEmployees == null || birthdayEmployees.Count == 0)
                 {
-                    _logger.LogInformation("No birthdays today.");
+                    _logger.LogInformation(Messages.BirthdayEmployeeNotFoundMsg);
                     return;
                 }
 
@@ -54,14 +54,12 @@ namespace AzureFunctionPet.Functions
                         emailBody
                     );
 
-                    _logger.LogInformation($"Birthday email sent to: {emp.Email}");
+                    _logger.LogInformation(Messages.BirthdayEmailSentMsg);
                 }
-
-                _logger.LogInformation("All birthday emails sent successfully.");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred during birthday email process");
+                _logger.LogError(ex, Messages.BirthdayEmailSentErrorMsg);
             }
         }
     }

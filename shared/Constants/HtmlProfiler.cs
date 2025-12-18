@@ -1,4 +1,4 @@
-﻿namespace AzureFunctionPet.Constants
+﻿namespace AzureFunctions_Triggers.Constants
 {
     public static class EmailTemplates
     {

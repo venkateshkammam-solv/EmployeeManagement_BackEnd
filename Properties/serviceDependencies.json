@@ -19,6 +19,11 @@
       "type": "storage",
       "connectionId": "StorageConnection:queueServiceUri",
       "dynamicId": null
+    },
+    "storage4": {
+      "type": "storage",
+      "connectionId": "StorageConnection1",
+      "dynamicId": null
     }
   }
 }

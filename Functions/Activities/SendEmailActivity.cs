@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
-using AzureFunctionPet.Constants;
-using AzureFunctionPet.Models;
+using AzureFunctions_Triggers.Constants;
+using AzureFunctions_Triggers.Models;
 using AzureFunctions.Models;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
@@ -25,7 +25,6 @@ public class SendEmailActivity
         try
         {
             string statusColor = metadata.Status == "Verified" ? "green" : "red";
-
             string emailBody = EmailTemplates.DocumentVerification
                 .Replace("{{EmployeeName}}", metadata.EmployeeName)
                 .Replace("{{EmployeeId}}", metadata.EmployeeId)

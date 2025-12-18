@@ -1,13 +1,11 @@
-﻿using AzureFunctionPet.Models;
-using AzureFunctionPet.Repositories;
+﻿using AzureFunctions_Triggers.Models;
+using AzureFunctions_Triggers.Repositories;
 using AzureFunctions.Models;
-using AzureFunctions_Triggers.Models;
 using Shared.Services;
-using System.Collections.Generic;
 using System.Text.Json;
-using System.Threading.Tasks;
+using AzureFunctions_Triggers.Shared.Constants;
 
-namespace AzureFunctionPet.Services
+namespace AzureFunctions_Triggers.Services
 {
     public class EmployeeService : IEmployeeService
     {
@@ -49,7 +47,6 @@ namespace AzureFunctionPet.Services
             return true;
         }
 
-
         public async Task<bool> IsPhoneNumberExistsAsync(string phoneNumber)
         {
             var checkPhoneNumber = await _cosmosRepo.IsPhoneNumberExistsAsync(phoneNumber);
@@ -59,25 +56,19 @@ namespace AzureFunctionPet.Services
             return true;
         }
 
-        public async Task<string> HandleAddDocumentAsync(DocumentMetadata metadata)
+        public async Task SaveOrUpdateDocumentAsync(DocumentMetadata metadata)
         {
             if (metadata == null)
-            {
                 throw new ArgumentNullException(nameof(metadata));
-            }
-            metadata.id = await _codeGenerator.GenerateidAsync("doc");
-            await _cosmosRepo.AddDocumentDataAsync(metadata);
+            if (string.IsNullOrEmpty(metadata.id))
+                throw new InvalidOperationException(Messages.DocumentIdAlreadyExist);
 
-            return "Document created";
+            await _cosmosRepo.UpsertDocumentAsync(metadata);
         }
-
 
         public Task<IEnumerable<EmployeeDetailsDto>> GetEmployeeEventsAsync() {
             return _cosmosRepo.GetAllEmployeesAsync();
         }
-
-
-
         public Task<EmployeeDetailsDto?> GetEmployeeEventByIdAsync(string id)
         {
             return _cosmosRepo.GetEmployeeByIdAsync(id);

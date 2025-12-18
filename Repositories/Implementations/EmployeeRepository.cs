@@ -1,13 +1,9 @@
 ﻿using Microsoft.Azure.Cosmos;
-using AzureFunctionPet.Models;
 using AzureFunctions_Triggers.Models;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using AzureFunctionPet.Repositories.Constants;
+using AzureFunctions_Triggers.Repositories.Constants;
 using AzureFunctions.Models;
 
-namespace AzureFunctionPet.Repositories
+namespace AzureFunctions_Triggers.Repositories
 {
 	public class EmployeeRepository : IEmployeeRepository
 	{
@@ -52,13 +48,8 @@ namespace AzureFunctionPet.Repositories
         public async Task<bool> IsEmailExistsAsync(string email)
         {
             await InitializeDatabaseAsync();
-
-            var query = new QueryDefinition(
-                "SELECT VALUE COUNT(1) FROM c WHERE c.Email = @Email")
-                .WithParameter("@Email", email);
-
+            var query = new QueryDefinition("SELECT VALUE COUNT(1) FROM c WHERE c.Email = @Email").WithParameter("@Email", email);
             var iterator = _container.GetItemQueryIterator<int>(query);
-
             int count = 0;
             while (iterator.HasMoreResults)
             {
@@ -74,8 +65,7 @@ namespace AzureFunctionPet.Repositories
         public async Task<bool> IsPhoneNumberExistsAsync(string phoneNumber)
         {
             await InitializeDatabaseAsync();
-            var query = new QueryDefinition(
-                "SELECT VALUE COUNT(1) FROM c WHERE c.PhoneNumber = @PhoneNumber")
+            var query = new QueryDefinition("SELECT VALUE COUNT(1) FROM c WHERE c.PhoneNumber = @PhoneNumber")
                 .WithParameter("@PhoneNumber", phoneNumber);
 
             var iterator = _container.GetItemQueryIterator<int>(query);
@@ -92,36 +82,32 @@ namespace AzureFunctionPet.Repositories
             return count > 0;
         }
 
-        public async Task<DocumentMetadata> AddDocumentDataAsync(DocumentMetadata documnetMetaData)
+        public async Task<DocumentMetadata> UpsertDocumentAsync(DocumentMetadata documentMetaData)
         {
             await InitializeDatabaseAsync();
-            var response = await _container.CreateItemAsync(documnetMetaData, new PartitionKey(documnetMetaData.id));
+            var response = await _container.UpsertItemAsync(documentMetaData, new PartitionKey(documentMetaData.id));
             return response.Resource;
         }
+
 
         public async Task<IEnumerable<EmployeeDetailsDto>> GetAllEmployeesAsync()
 		{
 			await InitializeDatabaseAsync();
 			var iterator = _container.GetItemQueryIterator<EmployeeDetailsDto>(new QueryDefinition(CosmosQueries.GetAllEmployees));
 			var results = new List<EmployeeDetailsDto>();
-
 			while (iterator.HasMoreResults)
 			{
 				var response = await iterator.ReadNextAsync();
 				results.AddRange(response);
 			}
-
 			return results;
 		}
 
 		public async Task<EmployeeDetailsDto?> GetEmployeeByIdAsync(string employeeId)
 		{
 			await InitializeDatabaseAsync();
-			var query = new QueryDefinition(CosmosQueries.GetEmployeeById)
-				.WithParameter("@id", employeeId);
-
+			var query = new QueryDefinition(CosmosQueries.GetEmployeeById).WithParameter("@id", employeeId);
 			var iterator = _container.GetItemQueryIterator<EmployeeDetailsDto>(query);
-
 			if (iterator.HasMoreResults)
 			{
 				var response = await iterator.ReadNextAsync();
@@ -143,7 +129,7 @@ namespace AzureFunctionPet.Repositories
 			await _container.DeleteItemAsync<EmployeeDetailsDto>(id, new PartitionKey(id));
 		}
 
-		public async Task<string?> GetLatestidAsync()
+		public async Task<string?> GetLatestEmpidAsync()
 		{
 			await InitializeDatabaseAsync();
 			var iterator = _container.GetItemQueryIterator<string>(new QueryDefinition(CosmosQueries.GetLatestEmployeeId));
@@ -153,8 +139,21 @@ namespace AzureFunctionPet.Repositories
 				var response = await iterator.ReadNextAsync();
 				return response.FirstOrDefault();
 			}
-
 			return null;
 		}
-	}
+        public async Task<string?> GetLatestDocIdAsync()
+        {
+            await InitializeDatabaseAsync();
+
+            var iterator = _container.GetItemQueryIterator<string>(new QueryDefinition(CosmosQueries.GetLatestDocId));
+
+            if (iterator.HasMoreResults)
+            {
+                var response = await iterator.ReadNextAsync();
+                return response.FirstOrDefault();
+            }
+            return null;
+        }
+
+    }
 }

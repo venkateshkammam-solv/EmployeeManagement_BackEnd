@@ -1,15 +1,12 @@
-﻿using AzureFunctionPet.Models;
+﻿using AzureFunctions_Triggers.Models;
 using AzureFunctions.Models;
-using AzureFunctions_Triggers.Models;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
-namespace AzureFunctionPet.Services
+namespace AzureFunctions_Triggers.Services
 {
     public interface IEmployeeService
     {
         Task<AddEmployeeRequest> HandleIncomingEmployeeEventAsync(AddEmployeeRequest addEmployeeRequest);
-        Task<string> HandleAddDocumentAsync(DocumentMetadata documentMetaData);
+        Task SaveOrUpdateDocumentAsync(DocumentMetadata documentMetaData);
         Task<IEnumerable<EmployeeDetailsDto>> GetEmployeeEventsAsync();
         Task<EmployeeDetailsDto?> GetEmployeeEventByIdAsync(string id);
 		Task UpdateEmployeeAsync(EmployeeDetailsDto model);

@@ -21,6 +21,12 @@
       "type": "storage.emulator",
       "connectionId": "StorageConnection:queueServiceUri",
       "dynamicId": null
+    },
+    "storage4": {
+      "secretStore": "LocalSecretsFile",
+      "type": "storage.emulator",
+      "connectionId": "StorageConnection1",
+      "dynamicId": null
     }
   }
 }

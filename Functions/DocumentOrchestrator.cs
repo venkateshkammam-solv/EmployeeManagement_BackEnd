@@ -3,6 +3,8 @@ using Microsoft.DurableTask;
 using Microsoft.Extensions.Logging;
 using AzureFunctions.Models;
 using AzureFunctions_Triggers.Models;
+using MyAzureFunctionApp.Shared;
+using AzureFunctions_Triggers.Shared.Constants;
 
 public class DocumentOrchestrator
 {
@@ -14,17 +16,37 @@ public class DocumentOrchestrator
     }
 
     [Function(nameof(DocumentOrchestrator))]
-    public async Task<DocumentMetadata> Run([OrchestrationTrigger] TaskOrchestrationContext ctx)
+    public async Task<DocumentMetadata> Run(
+        [OrchestrationTrigger] TaskOrchestrationContext ctx)
     {
         var metadata = ctx.GetInput<DocumentMetadata>();
+
+        metadata.InstanceId = ctx.InstanceId;
+
         metadata = await ctx.CallActivityAsync<DocumentMetadata>("BlobUploadActivity", metadata);
-        var verificationResult = await ctx.CallActivityAsync<VerificationResult>("VerifyDocumentActivity", metadata);
-        metadata.Status = verificationResult.Status;
-        metadata.Email = verificationResult.Email;
-        metadata.EmployeeName = verificationResult.EmployeeName;
+        metadata.Status = "Pending";
+        metadata.UploadedOn = ctx.CurrentUtcDateTime;
+
         await ctx.CallActivityAsync("SaveMetadataActivity", metadata);
-        await ctx.CallActivityAsync("SendEmailActivity", verificationResult);
-        _logger.LogInformation("Document workflow completed");
+
+        _logger.LogInformation(Messages.DocumentIsPendingForHumanApprovalMsg);
+
+        var approvalResult = await ctx.WaitForExternalEvent<ApprovalResult>("DocumentApprovalEvent");
+        metadata.Status = approvalResult.IsApproved ? "Approved" : "Rejected";
+        metadata.ReviewedBy = approvalResult.ReviewedBy;
+        metadata.ReviewerComments = approvalResult.Comments;
+        metadata.ReviewedOn = ctx.CurrentUtcDateTime;
+
+        await ctx.CallActivityAsync("SaveMetadataActivity", metadata);
+
+        await ctx.CallActivityAsync("SendEmailActivity", new EmailPayload
+        {
+            Email = metadata.Email,
+            EmployeeName = metadata.EmployeeName,
+            Status = metadata.Status
+        });
+
+        _logger.LogInformation(Messages.DocumentWorkFlowCmpltMsg);
         return metadata;
     }
 }

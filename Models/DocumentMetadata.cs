@@ -3,6 +3,7 @@
     public class DocumentMetadata
     {
         public string id { get; set; } = string.Empty;
+        public string InstanceId { get; set; } = string.Empty;
         public string EmployeeId { get; set; }
         public string EmployeeName { get; set; }
         public string? DocumentType { get; set; }
@@ -14,6 +15,9 @@
         public string TempFilePath { get; set; } = string.Empty;
         public string? UploadedBlobUrl { get; set; }
         public string Status { get; set; } = "Pending Verification";
+        public string ReviewedBy { get; set; }
+        public DateTime ReviewedOn { get; set; }
+        public string ReviewerComments { get; set; }
         public DateTime UploadedOn { get; set; } = DateTime.UtcNow;
         public string type { get; set; } = "Document";
 

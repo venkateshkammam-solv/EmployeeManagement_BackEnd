@@ -1,13 +1,14 @@
 ﻿using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using AzureFunctionPet.Repositories;
+using AzureFunctions_Triggers.Repositories;
 using AzureFunctions_Triggers.Models;
 using Shared.Services;
 using ExcelDataReader;
-using AzureFunctionPet.Constants;
+using AzureFunctions_Triggers.Constants;
 using System.Text;
+using AzureFunctions_Triggers.Shared.Constants;
 
-namespace AzureFunctionPet.Functions
+namespace AzureFunctions_Triggers.Functions
 {
     public class EmployeeDocumentProcessorFunction
     {
@@ -31,7 +32,7 @@ namespace AzureFunctionPet.Functions
         [Function("EmployeeDocumentProcessor")]
         public async Task RunAsync([BlobTrigger("uploads/{name}", Connection = "AzureWebJobsStorage")] Stream blobStream, string name)
         {
-            _logger.LogInformation("EmployeeDocumentProcessor triggered for file");
+            _logger.LogInformation(Messages.EmployeeDocumentProcessorMsg);
 
             try
             {
@@ -46,7 +47,6 @@ namespace AzureFunctionPet.Functions
                 {
                     var row = table.Rows[i];
                     string empCode = await _codeGenerator.GenerateidAsync("");
-
                     var employee = new AddEmployeeRequest
                     {
                         id = empCode,
@@ -64,7 +64,7 @@ namespace AzureFunctionPet.Functions
                     };
 
                     await _cosmosRepo.AddAsync(employee);
-                    _logger.LogInformation("Employee record added to database successfully.");
+                    _logger.LogInformation(Messages.RecordAddedSuccessMsg);
 
                     string subject = $"Welcome to the Company, {employee.FullName}!";
                     string body = EmailTemplates.EmployeeOnboarding
@@ -75,14 +75,14 @@ namespace AzureFunctionPet.Functions
 
                     await _emailService.SendEmailAsync(employee.Email, subject, body);
 
-                    _logger.LogInformation("Onboarding email sent successfully.");
+                    _logger.LogInformation(Messages.OnBoardEmailSuccessMsg);
                 }
 
-                _logger.LogInformation("Excel processing completed.");
+                _logger.LogInformation(Messages.ExcelProcessingMsg);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occurred during Excel data processing.");
+                _logger.LogError(ex, Messages.ExcelErrorProcessingMsg);
                 throw; 
             }
         }

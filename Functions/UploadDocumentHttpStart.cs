@@ -1,156 +1,144 @@
 ﻿using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Net.Http.Headers;
 using AzureFunctions.Models;
-using System.Net;
-using System.Text;
-using System.Text.RegularExpressions;
 using Microsoft.DurableTask.Client;
+using System.Net;
+using Shared.Services;
+using AzureFunctions_Triggers.Shared.Constants;
+using AzureFunctions_Triggers.Shared.Services;
 
 public class UploadDocumentHttpStart
 {
     private readonly ILogger _logger;
+    private readonly IdGenerator _codeGenerator;
 
-    public UploadDocumentHttpStart(ILoggerFactory loggerFactory)
+    public UploadDocumentHttpStart(ILoggerFactory loggerFactory, IdGenerator codeGenerator)
     {
         _logger = loggerFactory.CreateLogger<UploadDocumentHttpStart>();
+        _codeGenerator = codeGenerator;
     }
 
     [Function("UploadDocument_HttpStart")]
-    public async Task<HttpResponseData> Run([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req, [DurableClient] DurableTaskClient client)  
+    public async Task<HttpResponseData> Run(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req,
+        [DurableClient] DurableTaskClient client)
     {
-        var response = req.CreateResponse();
-
         try
         {
-            // Check Content-Type
-            if (!req.Headers.TryGetValues("Content-Type", out var contentTypes))
+            ValidateContentType(req, out var boundary);
+
+            var (metadata, fileName, _) =
+                await ParseMultipartDataAsync(req, boundary);
+
+            if (string.IsNullOrEmpty(fileName))
             {
-                response.StatusCode = HttpStatusCode.BadRequest;
-                await response.WriteStringAsync("Missing Content-Type header.");
-                return response;
+                return await HttpResponseHelper.CreateErrorResponse(req, HttpStatusCode.BadRequest, Messages.NoFileUploaded);
             }
 
-            var contentType = contentTypes.First();
-            if (!contentType.StartsWith("multipart/form-data"))
-            {
-                response.StatusCode = HttpStatusCode.BadRequest;
-                await response.WriteStringAsync("Content-Type must be multipart/form-data.");
-                return response;
-            }
+            metadata.id = await _codeGenerator.GenerateidAsync("doc");
 
-            // Extract boundary
-            var boundaryIndex = contentType.IndexOf("boundary=", StringComparison.OrdinalIgnoreCase);
-            if (boundaryIndex < 0)
-            {
-                response.StatusCode = HttpStatusCode.BadRequest;
-                await response.WriteStringAsync("Boundary not found in Content-Type header.");
-                return response;
-            }
+            string instanceId = await client.ScheduleNewOrchestrationInstanceAsync("DocumentOrchestrator", metadata);
 
-            var boundary = "--" + contentType.Substring(boundaryIndex + "boundary=".Length).Trim('"');
+            _logger.LogInformation(Messages.DocumentOrchestratorStarted, metadata.id,instanceId);
 
-            // temp storage path
-            string tempPath = Path.GetTempPath();
-            string? fileName = null;
-            string tempFilePath = "";
-            var formFields = new Dictionary<string, string>();
-            MemoryStream? currentFileStream = null;
-            bool inFile = false;
-
-            using var reader = new StreamReader(req.Body);
-            string? line;
-
-            while ((line = await reader.ReadLineAsync()) != null)
-            {
-                if (line.StartsWith(boundary))
-                {
-                    if (currentFileStream != null && fileName != null)
-                    {
-                        tempFilePath = Path.Combine(tempPath, fileName);
-                        await File.WriteAllBytesAsync(tempFilePath, currentFileStream.ToArray());
-                        currentFileStream.Dispose();
-                        currentFileStream = null;
-                        inFile = false;
-                    }
-                    continue;
-                }
-
-                if (line.StartsWith("Content-Disposition:", StringComparison.OrdinalIgnoreCase))
-                {
-                    var fileMatch = Regex.Match(line, "filename=\"(?<filename>.+?)\"");
-                    var nameMatch = Regex.Match(line, "name=\"(?<name>.+?)\"");
-
-                    if (fileMatch.Success)
-                    {
-                        fileName = fileMatch.Groups["filename"].Value;
-                        currentFileStream = new MemoryStream();
-                        inFile = true;
-                        await reader.ReadLineAsync();
-                        await reader.ReadLineAsync();
-                    }
-                    else if (nameMatch.Success)
-                    {
-                        // Form field section
-                        var fieldName = nameMatch.Groups["name"].Value;
-                        await reader.ReadLineAsync(); 
-                        var fieldValue = await reader.ReadLineAsync() ?? "";
-                        formFields[fieldName] = fieldValue;
-                    }
-                }
-                else if (inFile)
-                {
-                    var bytes = Encoding.UTF8.GetBytes(line + "\r\n");
-                    currentFileStream?.Write(bytes, 0, bytes.Length);
-                }
-            }
-
-            if (string.IsNullOrWhiteSpace(fileName) || string.IsNullOrWhiteSpace(tempFilePath))
-            {
-                response.StatusCode = HttpStatusCode.BadRequest;
-                await response.WriteStringAsync("No file uploaded.");
-                return response;
-            }
-
-            var metadata = new DocumentMetadata
-            {
-                id = formFields.ContainsKey("id") ? formFields["id"] : "",
-                EmployeeName = formFields.ContainsKey("employeeName") ? formFields["employeeName"] : "",
-                EmployeeId = formFields.ContainsKey("employeeId") ? formFields["employeeId"] : "",
-                Email = formFields.ContainsKey("email") ? formFields["email"] : "",
-                FileName = fileName,
-                TempFilePath = tempFilePath,
-                DocumentType = formFields.ContainsKey("documentType") ? formFields["documentType"] : null,
-                Description = formFields.ContainsKey("description") ? formFields["description"] : null,
-                Department = formFields.ContainsKey("department") ? formFields["department"] : null,
-                EffectiveDate = formFields.ContainsKey("effectiveDate") ? formFields["effectiveDate"] : null,
-                UploadedOn = DateTime.UtcNow
-            };
-
-            // Start the orchestrator
-            var instanceId = await client.ScheduleNewOrchestrationInstanceAsync(
-                "DocumentOrchestrator",
-                input: metadata
-            );
-
-            _logger.LogInformation("Orchestrator started with ID: {InstanceId}", instanceId);
-
-            response.StatusCode = HttpStatusCode.Accepted;
-            await response.WriteAsJsonAsync(new
-            {
-                instanceId,
-                statusQueryGetUri = $"/runtime/webhooks/durabletask/instances/{instanceId}?taskHub=default&connection=Storage",
-                message = "Orchestrator started successfully"
-            });
-
-            return response;
+            return await CreateSuccessResponse(req,metadata.id, instanceId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to start orchestrator");
-            response.StatusCode = HttpStatusCode.InternalServerError;
-            await response.WriteStringAsync($"Error: {ex.Message}");
-            return response;
+            _logger.LogError(ex, Messages.UploadDocumentError);
+            return await HttpResponseHelper.CreateErrorResponse(req, HttpStatusCode.InternalServerError, ex.Message);
         }
+    }
+
+    private void ValidateContentType(HttpRequestData req, out string boundary)
+    {
+        if (!req.Headers.TryGetValues("Content-Type", out var contentTypes))
+            throw new InvalidOperationException(Messages.MissingContentTypeHeader);
+
+          var contentType = contentTypes.First();
+          var mediaType = MediaTypeHeaderValue.Parse(contentType);
+
+        if (string.IsNullOrEmpty(mediaType.Boundary.Value))
+            throw new InvalidOperationException(Messages.MissingMultipartBoundary);
+
+        boundary = HeaderUtilities.RemoveQuotes(mediaType.Boundary).Value!;
+
+        if (!contentType.StartsWith("multipart/form-data", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(Messages.InvalidMultipartContentType);
+    }
+
+    private async Task<(DocumentMetadata metadata, string fileName, string tempFilePath)>
+        ParseMultipartDataAsync(HttpRequestData req, string boundary)
+    {
+        var reader = new MultipartReader(boundary, req.Body);
+
+        MultipartSection? section;
+        string? fileName = null;
+        string tempFilePath = string.Empty;
+        var formFields = new Dictionary<string, string>();
+
+        while ((section = await reader.ReadNextSectionAsync()) != null)
+        {
+            var contentDisposition = ContentDispositionHeaderValue.Parse(section.ContentDisposition);
+
+            if (contentDisposition.DispositionType.Equals("form-data") &&
+                !string.IsNullOrEmpty(contentDisposition.FileName.Value))
+            {
+                fileName = SanitizeFileName(contentDisposition.FileName.Value);
+
+                tempFilePath = Path.Combine(Path.GetTempPath(), fileName);
+                using var fileStream = File.Create(tempFilePath);
+                await section.Body.CopyToAsync(fileStream);
+            }
+            else
+            {
+                using var readerStream = new StreamReader(section.Body);
+
+                formFields[contentDisposition.Name.Value!] =
+                    await readerStream.ReadToEndAsync();
+            }
+        }
+
+        var metadata = new DocumentMetadata
+        {
+            EmployeeId = formFields.GetValueOrDefault("employeeId") ?? string.Empty,
+            EmployeeName = formFields.GetValueOrDefault("employeeName") ?? string.Empty,
+            Email = formFields.GetValueOrDefault("email") ?? string.Empty,
+            DocumentType = formFields.GetValueOrDefault("documentType"),
+            Description = formFields.GetValueOrDefault("description"),
+            Department = formFields.GetValueOrDefault("department"),
+            EffectiveDate = formFields.GetValueOrDefault("effectiveDate"),
+            FileName = fileName!,
+            TempFilePath = tempFilePath,
+            Status = "Pending",
+            UploadedOn = DateTime.UtcNow,
+            type = "Document"
+        };
+
+        return (metadata, fileName!, tempFilePath);
+    }
+
+    private string SanitizeFileName(string fileName)
+    {
+        fileName = fileName.Replace("\"", "").Trim();
+        foreach (var c in Path.GetInvalidFileNameChars())
+            fileName = fileName.Replace(c, '_');
+
+        return fileName;
+    }
+
+    private async Task<HttpResponseData> CreateSuccessResponse(HttpRequestData req, string documentId, string instanceId)
+    {
+        var response = req.CreateResponse(HttpStatusCode.Accepted);
+        await response.WriteAsJsonAsync(new
+        {
+            documentId,
+            instanceId,
+            message = Messages.DocumentWorkflowStarted
+        });
+        return response;
     }
 }
